@@ -11,7 +11,7 @@
  */
 
 #include "src/include/pmix_config.h"
-#include "include/pmix_common.h"
+#include "pmix_common.h"
 
 #include <stdio.h>
 #ifdef HAVE_UNISTD_H
@@ -53,12 +53,12 @@ typedef pmix_list_t ds21_lock_pthread_ctx_t;
 
 /*
  * Lock segment format:
- * 1. Segment size             sizeof(size_t)
- * 2. local_size:              sizeof(uint32_t)
- * 3. Align size               sizeof(size_t)
- * 4. Offset of mutexes        sizeof(size_t)
- * 5. Array of in use indexes: sizeof(int32_t)*local_size
- * 6. Double array of locks:   sizeof(pthread_mutex_t)*local_size*2
+ * 1. Segment size                 sizeof(size_t)
+ * 2. local_size:                  sizeof(uint32_t)
+ * 3. Align size                   sizeof(size_t)
+ * 4. Offset of mutexes            sizeof(size_t)
+ * 5. Array of in use indexes:     sizeof(int32_t)*local_size
+ * 6. Array of locks and signals : sizeof(pthread_mutex_t) + sizeof(uint64_t)
  */
 typedef struct {
    size_t   seg_size;
@@ -67,15 +67,26 @@ typedef struct {
    size_t   mutex_offs;
 } segment_hdr_t;
 
+typedef struct {
+    pthread_mutex_t mutex;
+    uint64_t        signal;
+} segment_lock_t;
+
 #define _GET_IDX_ARR_PTR(seg_ptr) \
     ((pmix_atomic_int32_t*)((char*)seg_ptr + sizeof(segment_hdr_t)))
 
 #define _GET_MUTEX_ARR_PTR(seg_hdr) \
     ((pthread_mutex_t*)((char*)seg_hdr + seg_hdr->mutex_offs))
 
-#define _GET_MUTEX_PTR(seg_hdr, idx) \
-    ((pthread_mutex_t*)((char*)seg_hdr + seg_hdr->mutex_offs + seg_hdr->align_size * (idx)))
+#define __GET_LOCK(seg_hdr, idx) \
+    ((segment_lock_t*)((char*)seg_hdr + seg_hdr->mutex_offs + \
+        seg_hdr->align_size * (idx)))
 
+#define _GET_MUTEX_PTR(seg_hdr, idx) \
+    ((pthread_mutex_t*)&(__GET_LOCK(seg_hdr, idx)->mutex))
+
+#define _GET_SIGNAL_PTR(seg_hdr, idx) \
+    ((uint64_t*)&(__GET_LOCK(seg_hdr, idx)->signal))
 
 static void ncon(lock_item_t *p) {
     p->lockfile = NULL;
@@ -93,7 +104,7 @@ static void ldes(lock_item_t *p) {
         if (p->lockfile) {
             unlink(p->lockfile);
         }
-        for(i = 0; i < p->num_locks * 2; i++) {
+        for(i = 0; i < p->num_locks; i++) {
             pthread_mutex_t *mutex = _GET_MUTEX_PTR(seg_hdr, i);
             if (0 != pthread_mutex_destroy(mutex)) {
                 PMIX_ERROR_LOG(PMIX_ERROR);
@@ -155,10 +166,10 @@ pmix_status_t pmix_gds_ds21_lock_init(pmix_common_dstor_lock_ctx_t *ctx, const c
         size_t seg_hdr_size;
 
         if (0 != (seg_align_size = pmix_common_dstor_getcacheblocksize())) {
-            seg_align_size = (sizeof(pthread_mutex_t) / seg_align_size + 1)
+            seg_align_size = (sizeof(segment_lock_t) / seg_align_size + 1)
                     * seg_align_size;
         } else {
-            seg_align_size = sizeof(pthread_mutex_t);
+            seg_align_size = sizeof(segment_lock_t);
         }
 
         seg_hdr_size = ((sizeof(segment_hdr_t)
@@ -166,7 +177,7 @@ pmix_status_t pmix_gds_ds21_lock_init(pmix_common_dstor_lock_ctx_t *ctx, const c
                         / seg_align_size + 1) * seg_align_size;
 
         size = ((seg_hdr_size
-                + 2 * local_size * seg_align_size) /* array of mutexes */
+                + local_size * seg_align_size) /* array of mutexes and signal variables */
                 / page_size + 1) * page_size;
 
         lock_item->seg_desc = pmix_common_dstor_create_new_lock_seg(base_path,
@@ -199,8 +210,10 @@ pmix_status_t pmix_gds_ds21_lock_init(pmix_common_dstor_lock_ctx_t *ctx, const c
         lock_item->num_locks = local_size;
         lock_item->mutex = _GET_MUTEX_ARR_PTR(seg_hdr);
 
-        for(i = 0; i < local_size * 2; i++) {
+        for(i = 0; i < local_size; i++) {
             pthread_mutex_t *mutex = _GET_MUTEX_PTR(seg_hdr, i);
+            volatile uint64_t *signal = _GET_SIGNAL_PTR(seg_hdr, i);
+            *signal = 0; 
             if (0 != pthread_mutex_init(mutex, &attr)) {
                 pthread_mutexattr_destroy(&attr);
                 rc = PMIX_ERR_INIT;
@@ -316,10 +329,8 @@ pmix_status_t pmix_ds21_lock_wr_get(pmix_common_dstor_lock_ctx_t lock_ctx)
          * so this loop should be relatively dast.
          */
         for (i = 0; i < num_locks; i++) {
-            pthread_mutex_t *mutex = _GET_MUTEX_PTR(seg_hdr, 2*i);
-            if (0 != pthread_mutex_lock(mutex)) {
-                return PMIX_ERROR;
-            }
+            volatile uint64_t *signal = _GET_SIGNAL_PTR(seg_hdr, i);
+            *signal = 1;
         }
 
         /* Now we can go and grab the main locks
@@ -329,7 +340,7 @@ pmix_status_t pmix_ds21_lock_wr_get(pmix_common_dstor_lock_ctx_t lock_ctx)
          * locks will be done
          */
         for(i = 0; i < num_locks; i++) {
-            pthread_mutex_t *mutex = _GET_MUTEX_PTR(seg_hdr, 2*i + 1);
+            pthread_mutex_t *mutex = _GET_MUTEX_PTR(seg_hdr, i);
             if (0 != pthread_mutex_lock(mutex)) {
                 return PMIX_ERROR;
             }
@@ -360,10 +371,10 @@ pmix_status_t pmix_ds21_lock_wr_rel(pmix_common_dstor_lock_ctx_t lock_ctx)
         /* Lock the second lock first to ensure that all procs will see
          * that we are trying to grab the main one */
         for(i=0; i<num_locks; i++) {
-            if (0 != pthread_mutex_unlock(_GET_MUTEX_PTR(seg_hdr, 2*i))) {
-                return PMIX_ERROR;
-            }
-            if (0 != pthread_mutex_unlock(_GET_MUTEX_PTR(seg_hdr, 2*i + 1))) {
+            pthread_mutex_t *mutex = _GET_MUTEX_PTR(seg_hdr, i);
+            volatile uint64_t *signal = _GET_SIGNAL_PTR(seg_hdr, i);
+            *signal = 0;
+            if (0 != pthread_mutex_unlock(mutex)) {
                 return PMIX_ERROR;
             }
         }
@@ -379,6 +390,8 @@ pmix_status_t pmix_ds21_lock_rd_get(pmix_common_dstor_lock_ctx_t lock_ctx)
     uint32_t idx;
     pmix_status_t rc;
     segment_hdr_t *seg_hdr;
+    pthread_mutex_t *mutex;
+    volatile uint64_t *signal; 
 
     if (NULL == lock_tracker) {
         rc = PMIX_ERR_NOT_FOUND;
@@ -395,20 +408,31 @@ pmix_status_t pmix_ds21_lock_rd_get(pmix_common_dstor_lock_ctx_t lock_ctx)
      * know that it is going to grab the write lock
      */
 
-    if (0 != pthread_mutex_lock(_GET_MUTEX_PTR(seg_hdr, 2*idx))) {
-        return PMIX_ERROR;
+    mutex = _GET_MUTEX_PTR(seg_hdr, idx);
+    signal = _GET_SIGNAL_PTR(seg_hdr, idx);
+
+      if(*signal) {
+        while(1) {
+            if(!pthread_mutex_trylock(mutex)) {
+                if(*signal) {
+                    if (0 != pthread_mutex_unlock(mutex)) {
+                      return PMIX_ERROR;
+                    }
+                    continue;
+                } else {
+                    goto exit;
+                }
+            }else {
+                goto lock;
+            }
+        }
     }
 
-    /* Now grab the main lock */
-    if (0 != pthread_mutex_lock(_GET_MUTEX_PTR(seg_hdr, 2*idx + 1))) {
-        return PMIX_ERROR;
+lock:
+    if (0 != pthread_mutex_lock(mutex)) {
+      return PMIX_ERROR;
     }
-
-    /* Once done - release signalling lock */
-    if (0 != pthread_mutex_unlock(_GET_MUTEX_PTR(seg_hdr, 2*idx))) {
-        return PMIX_ERROR;
-    }
-
+exit:
     return PMIX_SUCCESS;
 }
 
@@ -431,8 +455,8 @@ pmix_status_t pmix_ds21_lock_rd_rel(pmix_common_dstor_lock_ctx_t lock_ctx)
     idx = lock_item->lock_idx;
 
     /* Release the main lock */
-    if (0 != pthread_mutex_unlock(_GET_MUTEX_PTR(seg_hdr, 2*idx + 1))) {
-        return PMIX_SUCCESS;
+    if (0 != pthread_mutex_unlock(_GET_MUTEX_PTR(seg_hdr, idx))) {
+        return PMIX_ERROR;
     }
 
     return PMIX_SUCCESS;
