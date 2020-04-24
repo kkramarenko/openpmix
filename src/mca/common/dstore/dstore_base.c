@@ -121,7 +121,7 @@ static pmix_status_t _dstore_store_nolock(pmix_common_dstore_ctx_t *ds_ctx,
 
 static pmix_status_t _dstore_fetch(pmix_common_dstore_ctx_t *ds_ctx,
                                    const char *nspace, pmix_rank_t rank,
-                                   const char *key, pmix_value_t **kvs);
+                                   const char *key, pmix_value_t *kvs);
 
 ns_map_data_t * (*_esh_session_map_search)(const char *nspace) = NULL;
 
@@ -1534,7 +1534,7 @@ static inline ssize_t _get_univ_size(pmix_common_dstore_ctx_t *ds_ctx, const cha
     pmix_value_t *val;
     int rc;
 
-    rc = _dstore_fetch(ds_ctx, nspace, PMIX_RANK_WILDCARD, PMIX_UNIV_SIZE, &val);
+    rc = _dstore_fetch(ds_ctx, nspace, PMIX_RANK_WILDCARD, PMIX_UNIV_SIZE, val);
     if( PMIX_SUCCESS != rc ) {
         PMIX_ERROR_LOG(rc);
         return rc;
@@ -1948,7 +1948,7 @@ exit:
 
 static pmix_status_t _dstore_fetch(pmix_common_dstore_ctx_t *ds_ctx,
                                    const char *nspace, pmix_rank_t rank,
-                                   const char *key, pmix_value_t **kvs)
+                                   const char *key, pmix_value_t *kvs)
 {
     ns_seg_info_t *ns_info = NULL;
     pmix_status_t rc = PMIX_ERROR, lock_rc;
@@ -2128,7 +2128,7 @@ static pmix_status_t _dstore_fetch(pmix_common_dstore_ctx_t *ds_ctx,
             kval->data.darray->type = PMIX_INFO;
             kval->data.darray->size = ninfo;
             kval->data.darray->array = info;
-            *kvs = kval;
+            memcpy(kvs, kval, sizeof(pmix_value_t));
         }
 
         rc = PMIX_SUCCESS;
@@ -2215,8 +2215,8 @@ static pmix_status_t _dstore_fetch(pmix_common_dstore_ctx_t *ds_ctx,
                 PMIX_LOAD_BUFFER(_client_peer(ds_ctx), &buffer, data_ptr, data_size);
                 int cnt = 1;
                 /* unpack value for this key from the buffer. */
-                *kvs = (pmix_value_t*)malloc(sizeof(pmix_value_t));
-                PMIX_BFROPS_UNPACK(rc, _client_peer(ds_ctx), &buffer, (void*)*kvs, &cnt, PMIX_VALUE);
+//                *kvs = (pmix_value_t*)malloc(sizeof(pmix_value_t));
+                PMIX_BFROPS_UNPACK(rc, _client_peer(ds_ctx), &buffer, (void*)kvs, &cnt, PMIX_VALUE);
                 if (PMIX_SUCCESS != rc) {
                     PMIX_ERROR_LOG(rc);
                     goto done;
@@ -2297,32 +2297,33 @@ PMIX_EXPORT pmix_status_t pmix_common_dstor_fetch(pmix_common_dstore_ctx_t *ds_c
                                                     pmix_list_t *kvs)
 {
     pmix_kval_t *kv;
-    pmix_value_t *val;
+    static pmix_value_t val[64];
+    static int idx = 0;
     pmix_status_t rc = PMIX_SUCCESS;
 
     pmix_output_verbose(2, pmix_gds_base_framework.framework_output,
                         "gds: dstore fetch `%s`", key == NULL ? "NULL" : key);
 
-    rc = _dstore_fetch(ds_ctx, proc->nspace, proc->rank, key, &val);
+    rc = _dstore_fetch(ds_ctx, proc->nspace, proc->rank, key, &val[idx]);
+
     if (PMIX_SUCCESS == rc) {
         if( NULL == key ) {
             pmix_info_t *info;
             size_t n, ninfo;
 
-            if (NULL == val->data.darray ||
-                PMIX_INFO != val->data.darray->type ||
-                0 == val->data.darray->size) {
+            if (NULL == val[idx].data.darray ||
+                PMIX_INFO != val[idx].data.darray->type ||
+                0 == val[idx].data.darray->size) {
                 PMIX_ERROR_LOG(PMIX_ERR_NOT_FOUND);
                 return PMIX_ERR_NOT_FOUND;
             }
-            info = (pmix_info_t*)val->data.darray->array;
-            ninfo = val->data.darray->size;
+            info = (pmix_info_t*)val[idx].data.darray->array;
+            ninfo = val[idx].data.darray->size;
 
             for (n = 0; n < ninfo; n++){
                 kv = PMIX_NEW(pmix_kval_t);
                 if (NULL == kv) {
                     rc = PMIX_ERR_NOMEM;
-                    PMIX_VALUE_RELEASE(val);
                     return rc;
                 }
                 kv->key = strdup(info[n].key);
@@ -2330,7 +2331,6 @@ PMIX_EXPORT pmix_status_t pmix_common_dstor_fetch(pmix_common_dstore_ctx_t *ds_c
                 if (PMIX_SUCCESS != rc) {
                     PMIX_ERROR_LOG(rc);
                     PMIX_RELEASE(kv);
-                    PMIX_VALUE_RELEASE(val);
                     return rc;
                 }
                 pmix_list_append(kvs, &kv->super);
@@ -2341,12 +2341,13 @@ PMIX_EXPORT pmix_status_t pmix_common_dstor_fetch(pmix_common_dstore_ctx_t *ds_c
         /* just return the value */
         kv = PMIX_NEW(pmix_kval_t);
         if (NULL == kv) {
-            PMIX_VALUE_RELEASE(val);
+//            PMIX_VALUE_RELEASE(val);
             return PMIX_ERR_NOMEM;
         }
         kv->key = strdup(key);
-        kv->value = val;
+        kv->value = &val[idx];
         pmix_list_append(kvs, &kv->super);
+        idx++;
     }
     return rc;
 }
