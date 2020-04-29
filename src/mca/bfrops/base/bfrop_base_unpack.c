@@ -1076,10 +1076,12 @@ pmix_status_t pmix_bfrops_base_unpack_bo(pmix_pointer_array_t *regtypes,
                                          pmix_buffer_t *buffer, void *dest,
                                          int32_t *num_vals, pmix_data_type_t type)
 {
+    static char tmp[1000][PMIX_SIZE];
+    static int idx = 0;
     pmix_byte_object_t *ptr;
     int32_t i, n, m;
     pmix_status_t ret;
-
+    
     pmix_output_verbose(20, pmix_bfrops_base_framework.framework_output,
                         "pmix_bfrop_unpack: %d byte_object", *num_vals);
 
@@ -1099,7 +1101,9 @@ pmix_status_t pmix_bfrops_base_unpack_bo(pmix_pointer_array_t *regtypes,
             return ret;
         }
         if (0 < ptr[i].size) {
-            ptr[i].bytes = (char*)malloc(ptr[i].size * sizeof(char));
+            //ptr[i].bytes = (char*)malloc(ptr[i].size * sizeof(char));
+            ptr[i].bytes = tmp[idx];
+            idx++;
             m=ptr[i].size;
             PMIX_BFROPS_UNPACK_TYPE(ret, buffer, ptr[i].bytes, &m, PMIX_BYTE, regtypes);
             if (PMIX_SUCCESS != ret) {

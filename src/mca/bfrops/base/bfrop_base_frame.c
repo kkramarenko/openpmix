@@ -156,7 +156,7 @@ static void pmix_buffer_construct (pmix_buffer_t* buffer)
 static void pmix_buffer_destruct (pmix_buffer_t* buffer)
 {
     if (NULL != buffer->base_ptr) {
-        free (buffer->base_ptr);
+        //free (buffer->base_ptr);
     }
 }
 
@@ -194,10 +194,10 @@ static void kvcon(pmix_kval_t *k)
 static void kvdes(pmix_kval_t *k)
 {
     if (NULL != k->key) {
-        free(k->key);
+        //free(k->key);
     }
     if (NULL != k->value) {
-        PMIX_VALUE_RELEASE(k->value);
+        //PMIX_VALUE_RELEASE(k->value);
     }
 }
 PMIX_CLASS_INSTANCE(pmix_kval_t,
