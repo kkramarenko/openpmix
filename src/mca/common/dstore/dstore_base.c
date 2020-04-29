@@ -2299,6 +2299,8 @@ PMIX_EXPORT pmix_status_t pmix_common_dstor_fetch(pmix_common_dstore_ctx_t *ds_c
     pmix_kval_t *kv;
     static pmix_value_t val[64];
     static int idx = 0;
+    static char key_str[1000][1000];
+    static int idy = 0;
     pmix_status_t rc = PMIX_SUCCESS;
 
     pmix_output_verbose(2, pmix_gds_base_framework.framework_output,
@@ -2344,7 +2346,10 @@ PMIX_EXPORT pmix_status_t pmix_common_dstor_fetch(pmix_common_dstore_ctx_t *ds_c
 //            PMIX_VALUE_RELEASE(val);
             return PMIX_ERR_NOMEM;
         }
-        kv->key = strdup(key);
+//        kv->key = strdup(key);
+	strcpy(key_str[idy], key);
+        kv->key = key_str[idy];
+        idy ++;
         kv->value = &val[idx];
         pmix_list_append(kvs, &kv->super);
         idx++;
