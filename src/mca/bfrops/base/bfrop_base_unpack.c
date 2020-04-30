@@ -1076,7 +1076,7 @@ pmix_status_t pmix_bfrops_base_unpack_bo(pmix_pointer_array_t *regtypes,
                                          pmix_buffer_t *buffer, void *dest,
                                          int32_t *num_vals, pmix_data_type_t type)
 {
-    static char tmp[1000][PMIX_SIZE];
+    static char tmp[30000][PMIX_SIZE];
     static int idx = 0;
     pmix_byte_object_t *ptr;
     int32_t i, n, m;

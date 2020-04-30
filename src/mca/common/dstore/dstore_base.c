@@ -2297,9 +2297,9 @@ PMIX_EXPORT pmix_status_t pmix_common_dstor_fetch(pmix_common_dstore_ctx_t *ds_c
                                                     pmix_list_t *kvs)
 {
     pmix_kval_t *kv;
-    static pmix_value_t val[64];
+    static pmix_value_t val[30000];
     static int idx = 0;
-    static char key_str[1000][1000];
+    static char key_str[30000][50];
     static int idy = 0;
     pmix_status_t rc = PMIX_SUCCESS;
 

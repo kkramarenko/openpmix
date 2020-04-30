@@ -623,6 +623,8 @@ pmix_value_cmp_t pmix_bfrops_base_value_cmp(pmix_value_t *p,
 pmix_status_t pmix_bfrops_base_value_xfer(pmix_value_t *p,
                                           const pmix_value_t *src)
 {
+//    static char tmp[1000][1000];
+//    static int idx = 0;
     /* copy the right field */
     p->type = src->type;
     switch (src->type) {
@@ -716,6 +718,8 @@ pmix_status_t pmix_bfrops_base_value_xfer(pmix_value_t *p,
         memset(&p->data.bo, 0, sizeof(pmix_byte_object_t));
         if (NULL != src->data.bo.bytes && 0 < src->data.bo.size) {
             p->data.bo.bytes = malloc(src->data.bo.size);
+//	    p->data.bo.bytes = tmp[idx];
+//	    idx++;
             memcpy(p->data.bo.bytes, src->data.bo.bytes, src->data.bo.size);
             p->data.bo.size = src->data.bo.size;
         } else {
