@@ -171,10 +171,21 @@ int main(int argc, char **argv)
 
     parse_options(argc, argv);
 
+//    {
+//	volatile int delay = 1;
+//	while(delay){sleep(1);} 
+//    }
+
+
     total_start = GET_TS;
     start = GET_TS;
     pmi_init(&rank, &nproc);
     init_time += GET_TS - start;
+
+//    {
+//	volatile int delay = 1;
+//	while(delay){sleep(1);} 
+//    }
 
     pmi_get_local_ranks(&local_ranks, &local_cnt);
     remote_cnt = nproc - local_cnt;
@@ -296,7 +307,7 @@ int main(int argc, char **argv)
                 }
             }
             free(key_name);
-            free(key_val);
+            //free(key_val);
         }
     }
 
