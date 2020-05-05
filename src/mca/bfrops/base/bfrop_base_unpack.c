@@ -1100,7 +1100,7 @@ pmix_status_t pmix_bfrops_base_unpack_bo(pmix_pointer_array_t *regtypes,
         if (PMIX_SUCCESS != ret) {
             return ret;
         }
-        if (0 < ptr[i].size) {
+        if (0 < ptr[i].size) {        
             //ptr[i].bytes = (char*)malloc(ptr[i].size * sizeof(char));
             ptr[i].bytes = tmp[idx];
             idx++;

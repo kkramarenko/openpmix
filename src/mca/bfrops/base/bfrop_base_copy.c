@@ -246,7 +246,10 @@ pmix_status_t pmix_bfrops_base_copy_value(pmix_value_t **dest,
     /* copy the type */
     p->type = src->type;
     /* copy the data */
-    if (type == 21) return pmix_bfrops_base_value_xfer_mallocless(p, src);
+    if (type == 21) {    
+	return pmix_bfrops_base_value_xfer_mallocless(p, src);
+    }
+    
     return pmix_bfrops_base_value_xfer(p, src);
 }
 

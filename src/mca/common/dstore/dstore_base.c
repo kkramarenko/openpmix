@@ -2214,7 +2214,8 @@ static pmix_status_t _dstore_fetch(pmix_common_dstore_ctx_t *ds_ctx,
                 PMIX_CONSTRUCT(&buffer, pmix_buffer_t);
                 PMIX_LOAD_BUFFER(_client_peer(ds_ctx), &buffer, data_ptr, data_size);
                 int cnt = 1;
-                /* unpack value for this key from the buffer. */
+
+	       /* unpack value for this key from the buffer. */
 //                *kvs = (pmix_value_t*)malloc(sizeof(pmix_value_t));
                 PMIX_BFROPS_UNPACK(rc, _client_peer(ds_ctx), &buffer, (void*)kvs, &cnt, PMIX_VALUE);
                 if (PMIX_SUCCESS != rc) {
@@ -2341,11 +2342,12 @@ PMIX_EXPORT pmix_status_t pmix_common_dstor_fetch(pmix_common_dstore_ctx_t *ds_c
             return PMIX_SUCCESS;
         }
         /* just return the value */
-        kv = PMIX_NEW(pmix_kval_t);
+        kv = PMIX_NEW_MALLOCLESS(pmix_kval_t);
         if (NULL == kv) {
 //            PMIX_VALUE_RELEASE(val);
             return PMIX_ERR_NOMEM;
         }
+
 //        kv->key = strdup(key);
 	strcpy(key_str[idy], key);
         kv->key = key_str[idy];

@@ -693,7 +693,7 @@ static pmix_status_t _getfn_fastpath(const pmix_proc_t *proc, const pmix_key_t k
     if (NULL != *val) {
         PMIX_VALUE_COMPRESSED_STRING_UNPACK(*val);
     }
-    PMIX_DESTRUCT(&cb);
+    //PMIX_DESTRUCT(&cb);
     return rc;
 }
 

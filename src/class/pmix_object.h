@@ -262,7 +262,17 @@ struct pmix_object_t {
  * @return              Pointer to the object
  */
 static inline pmix_object_t *pmix_obj_new(pmix_class_t * cls);
+static inline pmix_object_t *pmix_obj_new_mallocless(pmix_class_t * cls);
 #if PMIX_ENABLE_DEBUG
+static inline pmix_object_t *pmix_obj_new_debug_mallocless(pmix_class_t* type, const char* file, int line)
+{
+    pmix_object_t* object = pmix_obj_new_mallocless(type);
+    object->obj_magic_id = PMIX_OBJ_MAGIC_ID;
+    object->cls_init_file_name = file;
+    object->cls_init_lineno = line;
+    return object;
+}
+
 static inline pmix_object_t *pmix_obj_new_debug(pmix_class_t* type, const char* file, int line)
 {
     pmix_object_t* object = pmix_obj_new(type);
@@ -271,11 +281,21 @@ static inline pmix_object_t *pmix_obj_new_debug(pmix_class_t* type, const char* 
     object->cls_init_lineno = line;
     return object;
 }
+
 #define PMIX_NEW(type)                                   \
     ((type *)pmix_obj_new_debug(PMIX_CLASS(type), __FILE__, __LINE__))
+
+#define PMIX_NEW_MALLOCLESS(type)                                   \
+    ((type *)pmix_obj_new_debug_mallocless(PMIX_CLASS(type), __FILE__, __LINE__))
+
 #else
+
 #define PMIX_NEW(type)                                   \
     ((type *) pmix_obj_new(PMIX_CLASS(type)))
+
+#define PMIX_NEW_MALLOCLESS(type)                                   \
+    ((type *) pmix_obj_new_mallocless(PMIX_CLASS(type)))
+
 #endif  /* PMIX_ENABLE_DEBUG */
 
 /**
@@ -484,6 +504,27 @@ static inline pmix_object_t *pmix_obj_new(pmix_class_t * cls)
     assert(cls->cls_sizeof >= sizeof(pmix_object_t));
 
     object = (pmix_object_t *) malloc(cls->cls_sizeof);
+    if (pmix_class_init_epoch != cls->cls_initialized) {
+        pmix_class_initialize(cls);
+    }
+    if (NULL != object) {
+        object->obj_class = cls;
+        object->obj_reference_count = 1;
+        pmix_obj_run_constructors(object);
+    }
+    return object;
+}
+
+static inline pmix_object_t *pmix_obj_new_mallocless(pmix_class_t * cls)
+{
+    static pmix_object_t tmp[30000];
+    static int idx = 0;
+    pmix_object_t *object;
+    assert(cls->cls_sizeof >= sizeof(pmix_object_t));
+
+//    object = (pmix_object_t *) malloc(cls->cls_sizeof);
+    object = &tmp[idx];
+    idx ++; 
     if (pmix_class_init_epoch != cls->cls_initialized) {
         pmix_class_initialize(cls);
     }
