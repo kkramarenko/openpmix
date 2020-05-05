@@ -224,13 +224,20 @@ pmix_status_t pmix_bfrops_base_copy_value(pmix_value_t **dest,
                                           pmix_value_t *src,
                                           pmix_data_type_t type)
 {
+    static pmix_value_t tmp[30000];
+    static int idx = 0;
     pmix_value_t *p;
 
     if (PMIX_VALUE != type) {
         return PMIX_ERR_BAD_PARAM;
     }
     /* create the new object */
-    *dest = (pmix_value_t*)malloc(sizeof(pmix_value_t));
+    if (type == 21) {
+	*dest = &tmp[idx];
+	idx ++;
+    } else {
+	*dest = (pmix_value_t*)malloc(sizeof(pmix_value_t));
+    }
     if (NULL == *dest) {
         return PMIX_ERR_OUT_OF_RESOURCE;
     }

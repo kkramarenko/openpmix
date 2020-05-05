@@ -773,6 +773,160 @@ pmix_status_t pmix_bfrops_base_value_xfer(pmix_value_t *p,
     return PMIX_SUCCESS;
 }
 
+pmix_status_t pmix_bfrops_base_value_xfer_mallocless(pmix_value_t *p,
+                                          const pmix_value_t *src)
+{
+    static char tmp[30000][1000];
+    static int idx = 0;
+    /* copy the right field */
+    p->type = src->type;
+    switch (src->type) {
+    case PMIX_UNDEF:
+    break;
+    case PMIX_BOOL:
+        p->data.flag = src->data.flag;
+        break;
+    case PMIX_BYTE:
+        p->data.byte = src->data.byte;
+        break;
+    case PMIX_STRING:
+        if (NULL != src->data.string) {
+            p->data.string = strdup(src->data.string);
+        } else {
+            p->data.string = NULL;
+        }
+        break;
+    case PMIX_SIZE:
+        p->data.size = src->data.size;
+        break;
+    case PMIX_PID:
+        p->data.pid = src->data.pid;
+        break;
+    case PMIX_INT:
+        /* to avoid alignment issues */
+        memcpy(&p->data.integer, &src->data.integer, sizeof(int));
+        break;
+    case PMIX_INT8:
+        p->data.int8 = src->data.int8;
+        break;
+    case PMIX_INT16:
+        /* to avoid alignment issues */
+        memcpy(&p->data.int16, &src->data.int16, 2);
+        break;
+    case PMIX_INT32:
+        /* to avoid alignment issues */
+        memcpy(&p->data.int32, &src->data.int32, 4);
+        break;
+    case PMIX_INT64:
+        /* to avoid alignment issues */
+        memcpy(&p->data.int64, &src->data.int64, 8);
+        break;
+    case PMIX_UINT:
+        /* to avoid alignment issues */
+        memcpy(&p->data.uint, &src->data.uint, sizeof(unsigned int));
+        break;
+    case PMIX_UINT8:
+        p->data.uint8 = src->data.uint8;
+        break;
+    case PMIX_UINT16:
+        /* to avoid alignment issues */
+        memcpy(&p->data.uint16, &src->data.uint16, 2);
+        break;
+    case PMIX_UINT32:
+        /* to avoid alignment issues */
+        memcpy(&p->data.uint32, &src->data.uint32, 4);
+        break;
+    case PMIX_UINT64:
+        /* to avoid alignment issues */
+        memcpy(&p->data.uint64, &src->data.uint64, 8);
+        break;
+    case PMIX_FLOAT:
+        p->data.fval = src->data.fval;
+        break;
+    case PMIX_DOUBLE:
+        p->data.dval = src->data.dval;
+        break;
+    case PMIX_TIMEVAL:
+        memcpy(&p->data.tv, &src->data.tv, sizeof(struct timeval));
+        break;
+    case PMIX_TIME:
+        memcpy(&p->data.time, &src->data.time, sizeof(time_t));
+        break;
+    case PMIX_STATUS:
+        memcpy(&p->data.status, &src->data.status, sizeof(pmix_status_t));
+        break;
+    case PMIX_PROC:
+        PMIX_PROC_CREATE(p->data.proc, 1);
+        if (NULL == p->data.proc) {
+            return PMIX_ERR_NOMEM;
+        }
+        memcpy(p->data.proc, src->data.proc, sizeof(pmix_proc_t));
+        break;
+    case PMIX_PROC_RANK:
+        memcpy(&p->data.rank, &src->data.rank, sizeof(pmix_rank_t));
+        break;
+    case PMIX_BYTE_OBJECT:
+    case PMIX_COMPRESSED_STRING:
+    case PMIX_REGEX:
+        memset(&p->data.bo, 0, sizeof(pmix_byte_object_t));
+        if (NULL != src->data.bo.bytes && 0 < src->data.bo.size) {
+//            p->data.bo.bytes = malloc(src->data.bo.size);
+	          p->data.bo.bytes = tmp[idx];
+	          idx++;
+            memcpy(p->data.bo.bytes, src->data.bo.bytes, src->data.bo.size);
+            p->data.bo.size = src->data.bo.size;
+        } else {
+            p->data.bo.bytes = NULL;
+            p->data.bo.size = 0;
+        }
+        break;
+    case PMIX_PERSIST:
+        memcpy(&p->data.persist, &src->data.persist, sizeof(pmix_persistence_t));
+        break;
+    case PMIX_SCOPE:
+        memcpy(&p->data.scope, &src->data.scope, sizeof(pmix_scope_t));
+        break;
+    case PMIX_DATA_RANGE:
+        memcpy(&p->data.range, &src->data.range, sizeof(pmix_data_range_t));
+        break;
+    case PMIX_PROC_STATE:
+        memcpy(&p->data.state, &src->data.state, sizeof(pmix_proc_state_t));
+        break;
+    case PMIX_PROC_INFO:
+        return pmix_bfrops_base_copy_pinfo(&p->data.pinfo, src->data.pinfo, PMIX_PROC_INFO);
+    case PMIX_DATA_ARRAY:
+        return pmix_bfrops_base_copy_darray(&p->data.darray, src->data.darray, PMIX_DATA_ARRAY);
+    case PMIX_POINTER:
+        p->data.ptr = src->data.ptr;
+        break;
+    case PMIX_ENVAR:
+        PMIX_ENVAR_CONSTRUCT(&p->data.envar);
+        if (NULL != src->data.envar.envar) {
+            p->data.envar.envar = strdup(src->data.envar.envar);
+        }
+        if (NULL != src->data.envar.value) {
+            p->data.envar.value = strdup(src->data.envar.value);
+        }
+        p->data.envar.separator = src->data.envar.separator;
+        break;
+    case PMIX_COORD:
+        pmix_bfrops_base_copy_coord(&p->data.coord, src->data.coord, PMIX_COORD);
+        break;
+    case PMIX_REGATTR:
+        pmix_bfrops_base_copy_regattr((pmix_regattr_t**)&p->data.ptr, src->data.ptr, PMIX_REGATTR);
+        break;
+    case PMIX_DIM_VALUE:
+        pmix_bfrops_base_copy_dimval((pmix_dim_value_t**)&p->data.dimval, src->data.dimval, PMIX_DIM_VALUE);
+        break;
+
+    default:
+        pmix_output(0, "PMIX-XFER-VALUE: UNSUPPORTED TYPE %d", (int)src->type);
+        return PMIX_ERROR;
+    }
+    return PMIX_SUCCESS;
+}
+
+
 
 /**
  * Internal function that resizes (expands) an inuse buffer if
