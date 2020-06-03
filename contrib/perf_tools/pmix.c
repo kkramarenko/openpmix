@@ -49,7 +49,7 @@ void pmi_init(int *rank, int *size)
     }
     _int_size = *size = val->data.uint32;
     *rank = this_proc.rank;
-    PMIX_VALUE_RELEASE(val);
+    //PMIX_VALUE_RELEASE(val);
 }
 
 void pmi_get_local_ranks(int **local_ranks, int *local_cnt)
@@ -68,7 +68,7 @@ void pmi_get_local_ranks(int **local_ranks, int *local_cnt)
         abort();
     }
     *local_cnt = val->data.uint32;
-    PMIX_VALUE_RELEASE(val);
+    //PMIX_VALUE_RELEASE(val);
 
     *local_ranks = calloc(*local_cnt, sizeof(int));
     /* get our job size */
@@ -278,7 +278,7 @@ void _get_key(int rank, char *key_name, int **key_val, int *key_size)
     *key_val = (int*)val->data.bo.bytes;
     *key_size = val->data.bo.size / sizeof(int);
     val->data.bo.bytes = NULL;
-    PMIX_VALUE_RELEASE(val);
+    //PMIX_VALUE_RELEASE(val);
 }
 
 void pmi_get_key_loc(int rank, char *key_name, int **key_val, int *key_size)
@@ -312,7 +312,7 @@ double pmi_get_double(int rank, char *key_name)
         abort();
     }
     v = val->data.dval;
-    PMIX_VALUE_RELEASE(val);
+    //PMIX_VALUE_RELEASE(val);
     return v;
 }
 
