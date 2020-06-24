@@ -16,6 +16,7 @@
 #include <getopt.h>
 #include <limits.h>
 #include <string.h>
+#include <stdint.h> 
 
 #include "pmi.h"
 
@@ -365,6 +366,49 @@ int main(int argc, char **argv)
     pmi_fence( 1 );
 
     if( rank == 0 ){
+	//Some my tests
+	char *strptr;
+	long addr;
+	uint64_t *intptr;
+	int *countptr;
+	int index = 0;
+
+	strptr = getenv("PMIX_GET_COUNT");
+	if (strptr != NULL) { 
+		addr = atol(strptr);
+		countptr  = (int *) addr;	
+		printf("function Get count = %d\n", *countptr);
+	} else {
+		printf("Can`t find PMIX_GET_COUNT variable!\n");
+	}
+
+	strptr = getenv("PMIX_GET_IN");
+	if (strptr != NULL) { 
+		addr = atol(strptr);
+		intptr = (uint64_t *) addr;
+		printf("get_in = [\n");
+		for (index = 0; index < *countptr; index++) {
+			printf("%ld,\n", intptr[index]);
+		}
+		printf("]\n");
+	} else {
+		printf("Can`t find PMIX_GET_IN variable!\n");
+	}
+	
+	strptr = getenv("PMIX_GET_OUT");
+	if (strptr != NULL) { 
+		addr = atol(strptr);
+		intptr  = (uint64_t *) addr;
+		printf("get_out = [\n");
+		for (index = 0; index < *countptr; index++) {	
+			printf("%ld,\n", intptr[index]);
+		}
+		printf("]");
+	} else {
+		printf("Can`t find PMIX_GET_OUT variable!\n");
+	}
+	// <-- End my tests
+
         double  cum_get_total_time = 0,
                 cum_get_loc_time = 0,
                 cum_get_rem_time = 0,

@@ -83,6 +83,17 @@ static pmix_status_t _getfn_fastpath(const pmix_proc_t *proc, const pmix_key_t k
 
 static pmix_status_t process_values(pmix_value_t **v, pmix_cb_t *cb);
 
+static inline uint64_t rdtsc(void) {
+    uint64_t ts;
+    asm volatile (
+        "rdtsc\n\t"    // Returns the time in EDX:EAX.
+        "shl $32, %%rdx\n\t"  // Shift the upper bits left.
+        "or %%rdx, %0"        // 'Or' in the lower bits.
+        : "=a" (ts)
+        :
+        : "rdx");
+    return ts;
+}
 
 PMIX_EXPORT pmix_status_t PMIx_Get(const pmix_proc_t *proc,
                                    const pmix_key_t key,
@@ -91,7 +102,27 @@ PMIX_EXPORT pmix_status_t PMIx_Get(const pmix_proc_t *proc,
 {
     pmix_cb_t cb;
     pmix_status_t rc;
+    static int index = 0;
+    static uint64_t time_stamps_get_in[1000];
+    static uint64_t time_stamps_get_out[1000];
+    static char buf1[255];
+    static char buf2[255];
+    static char buf3[255];
 
+    time_stamps_get_in[index] = rdtsc();
+
+    if (index == 0) {
+    	memset(buf1, 0, 255);
+	snprintf(buf1, 255, "PMIX_GET_IN=%ld", (long) time_stamps_get_in);
+	putenv(buf1);
+	memset(buf2, 0, 255);
+	snprintf(buf2, 255, "PMIX_GET_OUT=%ld", (long) time_stamps_get_out);
+	putenv(buf2);	
+    	memset(buf3, 0, 255);
+	snprintf(buf3, 255, "PMIX_GET_COUNT=%ld", (long) &index);
+	putenv(buf3);
+    }
+    
     PMIX_ACQUIRE_THREAD(&pmix_global_lock);
 
     if (pmix_globals.init_cntr <= 0) {
@@ -125,6 +156,8 @@ PMIX_EXPORT pmix_status_t PMIx_Get(const pmix_proc_t *proc,
     pmix_output_verbose(2, pmix_client_globals.get_output,
                         "pmix:client get completed");
 
+    time_stamps_get_out[index] = rdtsc();
+    index ++;
     return rc;
 }
 
