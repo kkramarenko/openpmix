@@ -364,15 +364,18 @@ int main(int argc, char **argv)
 
     pmi_commit();
     pmi_fence( 1 );
-
-    if( rank == 0 ){
-	//Some my tests
+    
+    //my tests
+    printf("My pid=%d rank=%d nprocs=%d\n", getpid(), rank, nproc);
+ 	//Some my tests
 	char *strptr;
 	long addr;
 	uint64_t *intptr;
 	int *countptr;
 	int index = 0;
-
+	FILE *fd;
+	
+	//fd = fopen("get_func_stamps.txt", "w");
 	strptr = getenv("PMIX_GET_COUNT");
 	if (strptr != NULL) { 
 		addr = atol(strptr);
@@ -386,7 +389,7 @@ int main(int argc, char **argv)
 	if (strptr != NULL) { 
 		addr = atol(strptr);
 		intptr = (uint64_t *) addr;
-		printf("get_in = [\n");
+		printf("get_in = %p [\n", intptr);
 		for (index = 0; index < *countptr; index++) {
 			printf("%ld,\n", intptr[index]);
 		}
@@ -399,7 +402,7 @@ int main(int argc, char **argv)
 	if (strptr != NULL) { 
 		addr = atol(strptr);
 		intptr  = (uint64_t *) addr;
-		printf("get_out = [\n");
+		printf("get_out = %p [\n", intptr);
 		for (index = 0; index < *countptr; index++) {	
 			printf("%ld,\n", intptr[index]);
 		}
@@ -407,7 +410,90 @@ int main(int argc, char **argv)
 	} else {
 		printf("Can`t find PMIX_GET_OUT variable!\n");
 	}
+	
+	strptr = getenv("PMIX_DS_COUNT");
+	if (strptr != NULL) { 
+		addr = atol(strptr);
+		countptr  = (int *) addr;	
+		printf("function dstore_fetch count = %d\n", *countptr);
+	} else {
+		printf("Can`t find PMIX_DS_COUNT variable!\n");
+	}
+
+	strptr = getenv("PMIX_DS_BEFORE_LOCK");
+	if (strptr != NULL) { 
+		addr = atol(strptr);
+		intptr = (uint64_t *) addr;
+		printf("before_lock = %p [\n", intptr);
+		for (index = 0; index < *countptr; index++) {
+			printf("%ld,\n", intptr[index]);
+		}
+		printf("]\n");
+	} else {
+		printf("Can`t find PMIX_DS_BEFORE_LOCK variable!\n");
+	}
+	
+	strptr = getenv("PMIX_DS_AFTER_LOCK");
+	if (strptr != NULL) { 
+		addr = atol(strptr);
+		intptr = (uint64_t *) addr;
+		printf("after_lock = %p [\n", intptr);
+		for (index = 0; index < *countptr; index++) {
+			printf("%ld,\n", intptr[index]);
+		}
+		printf("]\n");
+	} else {
+		printf("Can`t find PMIX_DS_AFTER_LOCK variable!\n");
+	}
+
+	strptr = getenv("PMIX_DS_FIND_KEY");
+	if (strptr != NULL) { 
+		addr = atol(strptr);
+		intptr = (uint64_t *) addr;
+		printf("find_key = %p [\n", intptr);
+		for (index = 0; index < *countptr; index++) {
+			printf("%ld,\n", intptr[index]);
+		}
+		printf("]\n");
+	} else {
+		printf("Can`t find PMIX_DS_FIND_KEY variable!\n");
+	}
+
+	strptr = getenv("PMIX_DS_UNPACK_KEY");
+	if (strptr != NULL) { 
+		addr = atol(strptr);
+		intptr = (uint64_t *) addr;
+		printf("unpack_key = %p [\n", intptr);
+		for (index = 0; index < *countptr; index++) {
+			printf("%ld,\n", intptr[index]);
+		}
+		printf("]\n");
+	} else {
+		printf("Can`t find PMIX_DS_UNPACK_KEY variable!\n");
+	}
+
+	strptr = getenv("PMIX_DS_AFTER_UNLOCK");
+	if (strptr != NULL) { 
+		addr = atol(strptr);
+		intptr = (uint64_t *) addr;
+		printf("after_unlock = %p [\n", intptr);
+		for (index = 0; index < *countptr; index++) {
+			printf("%ld,\n", intptr[index]);
+		}
+		printf("]\n");
+	} else {
+		printf("Can`t find PMIX_DS_AFTER_UNLOCK variable!\n");
+	}
+	//fclose(fd);
 	// <-- End my tests
+
+   // <--- End of my tests
+   // volatile int delay = 1;
+  //  while(delay){
+  //     sleep(1);
+  //  }
+    
+    if( rank == 0 ){
 
         double  cum_get_total_time = 0,
                 cum_get_loc_time = 0,

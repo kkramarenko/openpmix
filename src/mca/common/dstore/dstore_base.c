@@ -1943,6 +1943,18 @@ exit:
     return rc;
 }
 
+static inline uint64_t rdtsc(void) {
+    uint64_t ts;
+    asm volatile (
+        "rdtsc\n\t"    // Returns the time in EDX:EAX.
+        "shl $32, %%rdx\n\t"  // Shift the upper bits left.
+        "or %%rdx, %0"        // 'Or' in the lower bits.
+        : "=a" (ts)
+        :
+        : "rdx");
+    return ts;
+}
+
 static pmix_status_t _dstore_fetch(pmix_common_dstore_ctx_t *ds_ctx,
                                    const char *nspace, pmix_rank_t rank,
                                    const char *key, pmix_value_t **kvs)
@@ -1965,7 +1977,40 @@ static pmix_status_t _dstore_fetch(pmix_common_dstore_ctx_t *ds_ctx,
     size_t ninfo;
     size_t keyhash = 0;
     bool lock_is_set = false;
+    static int index = 0;
+    static uint64_t time_stamps_ds_before_lock[1000];
+    static uint64_t time_stamps_ds_after_lock[1000];
+    static uint64_t time_stamps_ds_find_key[1000];
+    static uint64_t time_stamps_ds_unpack_key[1000];
+    static uint64_t time_stamps_ds_after_unlock[1000];
+    static char buf1[255];
+    static char buf2[255];
+    static char buf3[255];
+    static char buf4[255];
+    static char buf5[255];
+    static char buf6[255];
 
+    if (index == 0) {
+    	memset(buf1, 0, 255);
+	snprintf(buf1, 255, "PMIX_DS_BEFORE_LOCK=%ld", (long) time_stamps_ds_before_lock);
+	putenv(buf1);
+	memset(buf2, 0, 255);
+	snprintf(buf2, 255, "PMIX_DS_AFTER_LOCK=%ld", (long) time_stamps_ds_after_lock);
+	putenv(buf2);	
+ 	memset(buf3, 0, 255);
+	snprintf(buf3, 255, "PMIX_DS_FIND_KEY=%ld", (long) time_stamps_ds_find_key);
+	putenv(buf3);	
+ 	memset(buf4, 0, 255);
+	snprintf(buf4, 255, "PMIX_DS_UNPACK_KEY=%ld", (long) time_stamps_ds_unpack_key);
+	putenv(buf4);	
+ 	memset(buf5, 0, 255);
+	snprintf(buf5, 255, "PMIX_DS_AFTER_UNLOCK=%ld", (long) time_stamps_ds_after_unlock);
+	putenv(buf5);	
+    	memset(buf6, 0, 255);
+	snprintf(buf6, 255, "PMIX_DS_COUNT=%ld", (long) &index);
+	putenv(buf6);
+    }
+ 
     PMIX_OUTPUT_VERBOSE((10, pmix_gds_base_framework.framework_output,
                          "%s:%d:%s: for %s:%u look for key %s",
                          __FILE__, __LINE__, __func__, nspace, rank, key));
@@ -2014,6 +2059,7 @@ static pmix_status_t _dstore_fetch(pmix_common_dstore_ctx_t *ds_ctx,
         cur_rank = rank;
     }
 
+    time_stamps_ds_before_lock[index] = rdtsc();
     /* grab shared lock */
     lock_rc = _ESH_LOCK(ds_ctx, ns_map->tbl_idx, rd_lock);
     if (PMIX_SUCCESS != lock_rc) {
@@ -2021,6 +2067,7 @@ static pmix_status_t _dstore_fetch(pmix_common_dstore_ctx_t *ds_ctx,
         rc = lock_rc;
         goto error;
     }
+    time_stamps_ds_after_lock[index] = rdtsc();
 
     /* First of all, we go through all initial segments and look at their field.
      * If it's 1, then generate name of next initial segment incrementing id by one and attach to it.
@@ -2206,6 +2253,7 @@ static pmix_status_t _dstore_fetch(pmix_common_dstore_ctx_t *ds_ctx,
                             "%s:%d:%s: for rank %s:%u, found target key %s",
                             __FILE__, __LINE__, __func__, nspace, cur_rank, key));
                 /* target key is found, get value */
+		time_stamps_ds_find_key[index] = rdtsc();
                 uint8_t *data_ptr = PMIX_DS_DATA_PTR(ds_ctx, addr);
                 size_t data_size = PMIX_DS_DATA_SIZE(ds_ctx, addr, data_ptr);
                 PMIX_CONSTRUCT(&buffer, pmix_buffer_t);
@@ -2214,6 +2262,7 @@ static pmix_status_t _dstore_fetch(pmix_common_dstore_ctx_t *ds_ctx,
                 /* unpack value for this key from the buffer. */
                 *kvs = (pmix_value_t*)malloc(sizeof(pmix_value_t));
                 PMIX_BFROPS_UNPACK(rc, _client_peer(ds_ctx), &buffer, (void*)*kvs, &cnt, PMIX_VALUE);
+		time_stamps_ds_unpack_key[index] = rdtsc();
                 if (PMIX_SUCCESS != rc) {
                     PMIX_ERROR_LOG(rc);
                     goto done;
@@ -2245,7 +2294,8 @@ done:
     if (PMIX_SUCCESS != lock_rc) {
         PMIX_ERROR_LOG(lock_rc);
     }
-
+    time_stamps_ds_after_unlock[index] = rdtsc();
+    index ++;
     /* unset ds_ctx lock */
     if (lock_is_set) {
         pthread_mutex_unlock(&ds_ctx->lock);
