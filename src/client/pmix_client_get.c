@@ -103,8 +103,8 @@ PMIX_EXPORT pmix_status_t PMIx_Get(const pmix_proc_t *proc,
     pmix_cb_t cb;
     pmix_status_t rc;
     static int index = 0;
-    static uint64_t time_stamps_get_in[1000];
-    static uint64_t time_stamps_get_out[1000];
+    static uint64_t time_stamps_get_in[5000];
+    static uint64_t time_stamps_get_out[5000];
     static char buf1[255];
     static char buf2[255];
     static char buf3[255];

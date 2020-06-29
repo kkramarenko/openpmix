@@ -1978,11 +1978,11 @@ static pmix_status_t _dstore_fetch(pmix_common_dstore_ctx_t *ds_ctx,
     size_t keyhash = 0;
     bool lock_is_set = false;
     static int index = 0;
-    static uint64_t time_stamps_ds_before_lock[1000];
-    static uint64_t time_stamps_ds_after_lock[1000];
-    static uint64_t time_stamps_ds_find_key[1000];
-    static uint64_t time_stamps_ds_unpack_key[1000];
-    static uint64_t time_stamps_ds_after_unlock[1000];
+    static uint64_t time_stamps_ds_before_lock[5000];
+    static uint64_t time_stamps_ds_after_lock[5000];
+    static uint64_t time_stamps_ds_find_key[5000];
+    static uint64_t time_stamps_ds_unpack_key[5000];
+    static uint64_t time_stamps_ds_after_unlock[5000];
     static char buf1[255];
     static char buf2[255];
     static char buf3[255];
