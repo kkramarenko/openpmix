@@ -484,15 +484,121 @@ int main(int argc, char **argv)
 	} else {
 		printf("Can`t find PMIX_DS_AFTER_UNLOCK variable!\n");
 	}
-	//fclose(fd);
-	// <-- End my tests
 
-   // <--- End of my tests
-   // volatile int delay = 1;
+  // <--- End of my tests
+  // volatile int delay = 1;
   //  while(delay){
   //     sleep(1);
   //  }
-    
+ 	strptr = getenv("PMIX_GET_NB_COUNT");
+	if (strptr != NULL) { 
+		addr = atol(strptr);
+		countptr  = (int *) addr;	
+		printf("function Get_nb count = %d\n", *countptr);
+	} else {
+		printf("Can`t find PMIX_GET_NB_COUNT variable!\n");
+	}
+
+	strptr = getenv("PMIX_GET_NB_IN");
+	if (strptr != NULL) { 
+		addr = atol(strptr);
+		intptr = (uint64_t *) addr;
+		printf("get_nb_in = %p [\n", intptr);
+		for (index = 0; index < *countptr; index++) {
+			printf("%ld,\n", intptr[index]);
+		}
+		printf("]\n");
+	} else {
+		printf("Can`t find PMIX_GET_NB_IN variable!\n");
+	}
+
+	strptr = getenv("PMIX_GET_NB_OUT");
+	if (strptr != NULL) { 
+		addr = atol(strptr);
+		intptr = (uint64_t *) addr;
+		printf("get_nb_out = %p [\n", intptr);
+		for (index = 0; index < *countptr; index++) {
+			printf("%ld,\n", intptr[index]);
+		}
+		printf("]\n");
+	} else {
+		printf("Can`t find PMIX_GET_NB_OUT variable!\n");
+	}
+
+ 	strptr = getenv("PMIX_FASTPATH_COUNT");
+	if (strptr != NULL) { 
+		addr = atol(strptr);
+		countptr  = (int *) addr;	
+		printf("function Fastpath count = %d\n", *countptr);
+	} else {
+		printf("Can`t find PMIX_FASTPATH_COUNT variable!\n");
+	}
+
+	strptr = getenv("PMIX_FASTPATH_IN");
+	if (strptr != NULL) { 
+		addr = atol(strptr);
+		intptr = (uint64_t *) addr;
+		printf("fastpath_in = %p [\n", intptr);
+		for (index = 0; index < *countptr; index++) {
+			printf("%ld,\n", intptr[index]);
+		}
+		printf("]\n");
+	} else {
+		printf("Can`t find PMIX_FASTPATH_IN variable!\n");
+	}
+
+	strptr = getenv("PMIX_FASTPATH_OUT");
+	if (strptr != NULL) { 
+		addr = atol(strptr);
+		intptr = (uint64_t *) addr;
+		printf("fastpath_out = %p [\n", intptr);
+		for (index = 0; index < *countptr; index++) {
+			printf("%ld,\n", intptr[index]);
+		}
+		printf("]\n");
+	} else {
+		printf("Can`t find PMIX_FASTPATH_OUT variable!\n");
+	}
+
+ 	strptr = getenv("PMIX_DS_FETCH_COUNT");
+	if (strptr != NULL) { 
+		addr = atol(strptr);
+		countptr  = (int *) addr;	
+		printf("function ds_fetch count = %d\n", *countptr);
+	} else {
+		printf("Can`t find PMIX_DS_FETCH_COUNT variable!\n");
+	}
+
+	strptr = getenv("PMIX_DS_FETCH_IN");
+	if (strptr != NULL) { 
+		addr = atol(strptr);
+		intptr = (uint64_t *) addr;
+		printf("ds_fetch_in = %p [\n", intptr);
+		for (index = 0; index < *countptr; index++) {
+			printf("%ld,\n", intptr[index]);
+		}
+		printf("]\n");
+	} else {
+		printf("Can`t find PMIX_DS_FETCH_IN variable!\n");
+	}
+
+	strptr = getenv("PMIX_DS_FETCH_OUT");
+	if (strptr != NULL) { 
+		addr = atol(strptr);
+		intptr = (uint64_t *) addr;
+		printf("ds_fetch_out = %p [\n", intptr);
+		for (index = 0; index < *countptr; index++) {
+			printf("%ld,\n", intptr[index]);
+		}
+		printf("]\n");
+	} else {
+		printf("Can`t find PMIX_DS_FETCH_OUT variable!\n");
+	}
+
+	//fclose(fd);
+	// <-- End my tests
+
+   
     if( rank == 0 ){
 
         double  cum_get_total_time = 0,

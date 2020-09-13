@@ -113,14 +113,14 @@ PMIX_EXPORT pmix_status_t PMIx_Get(const pmix_proc_t *proc,
 
     if (index == 0) {
     	memset(buf1, 0, 255);
-	snprintf(buf1, 255, "PMIX_GET_IN=%ld", (long) time_stamps_get_in);
-	putenv(buf1);
-	memset(buf2, 0, 255);
-	snprintf(buf2, 255, "PMIX_GET_OUT=%ld", (long) time_stamps_get_out);
-	putenv(buf2);	
+	    snprintf(buf1, 255, "PMIX_GET_IN=%ld", (long) time_stamps_get_in);
+	    putenv(buf1);
+	    memset(buf2, 0, 255);
+	    snprintf(buf2, 255, "PMIX_GET_OUT=%ld", (long) time_stamps_get_out);
+	    putenv(buf2);	
     	memset(buf3, 0, 255);
-	snprintf(buf3, 255, "PMIX_GET_COUNT=%ld", (long) &index);
-	putenv(buf3);
+	    snprintf(buf3, 255, "PMIX_GET_COUNT=%ld", (long) &index);
+	    putenv(buf3);
     }
     
     PMIX_ACQUIRE_THREAD(&pmix_global_lock);
@@ -175,6 +175,27 @@ PMIX_EXPORT pmix_status_t PMIx_Get_nb(const pmix_proc_t *proc, const pmix_key_t 
     bool copy = false;
     uint32_t appnum;
     pmix_value_t *ival = NULL;
+    static int index_nb = 0;
+    static uint64_t time_stamps_get_nb_in[5000];
+    static uint64_t time_stamps_get_nb_out[5000];
+    static char buf4[255];
+    static char buf5[255];
+    static char buf6[255];
+
+    time_stamps_get_nb_in[index_nb] = rdtsc();
+
+    if (index_nb == 0) {
+    	memset(buf4, 0, 255);
+	    snprintf(buf4, 255, "PMIX_GET_NB_IN=%ld", (long) time_stamps_get_nb_in);
+	    putenv(buf4);
+	    memset(buf5, 0, 255);
+	    snprintf(buf5, 255, "PMIX_GET_NB_OUT=%ld", (long) time_stamps_get_nb_out);
+	    putenv(buf5);	
+    	memset(buf6, 0, 255);
+	    snprintf(buf6, 255, "PMIX_GET_NB_COUNT=%ld", (long) &index_nb);
+	    putenv(buf6);
+    }
+ 
 
     PMIX_ACQUIRE_THREAD(&pmix_global_lock);
 
@@ -391,6 +412,9 @@ PMIX_EXPORT pmix_status_t PMIx_Get_nb(const pmix_proc_t *proc, const pmix_key_t 
     cb->cbdata = cbdata;
     PMIX_THREADSHIFT(cb, _getnbfn);
 
+    time_stamps_get_nb_out[index_nb] = rdtsc();
+    index_nb ++;
+   
     return PMIX_SUCCESS;
 }
 
@@ -697,6 +721,27 @@ static pmix_status_t _getfn_fastpath(const pmix_proc_t *proc, const pmix_key_t k
     pmix_cb_t *cb = PMIX_NEW(pmix_cb_t);
     pmix_status_t rc = PMIX_SUCCESS;
     size_t n;
+    static int index_fp = 0;
+    static uint64_t time_stamps_fastpath_in[5000];
+    static uint64_t time_stamps_fastpath_out[5000];
+    static char buf7[255];
+    static char buf8[255];
+    static char buf9[255];
+
+    time_stamps_fastpath_in[index_fp] = rdtsc();
+
+    if (index_nb == 0) {
+    	memset(buf7, 0, 255);
+	    snprintf(buf7, 255, "PMIX_FASTPATH_IN=%ld", (long) time_stamps_fastpath_in);
+	    putenv(buf7);
+	    memset(buf8, 0, 255);
+	    snprintf(buf8, 255, "PMIX_FASTPATH_OUT=%ld", (long) time_stamps_fastpath_out);
+	    putenv(buf8);	
+    	memset(buf6, 0, 255);
+	    snprintf(buf6, 255, "PMIX_FASTPATH_COUNT=%ld", (long) &index_fp);
+	    putenv(buf6);
+    }
+ 
 
     /* scan the incoming directives */
     if (NULL != info) {
@@ -742,6 +787,8 @@ static pmix_status_t _getfn_fastpath(const pmix_proc_t *proc, const pmix_key_t k
         PMIX_VALUE_COMPRESSED_STRING_UNPACK(*val);
     }
     PMIX_RELEASE(cb);
+    time_stamps_fastpath_out[index_fp] = rdtsc();
+    index_fp ++;
     return rc;
 }
 

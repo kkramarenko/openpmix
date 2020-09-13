@@ -2346,7 +2346,27 @@ PMIX_EXPORT pmix_status_t pmix_common_dstor_fetch(pmix_common_dstore_ctx_t *ds_c
     pmix_kval_t *kv;
     pmix_value_t *val;
     pmix_status_t rc = PMIX_SUCCESS;
+    static int index_ds_ft = 0;
+    static uint64_t time_stamps_ds_fetch_in[5000];
+    static uint64_t time_stamps_ds_fetch_out[5000];
+    static char buf7[255];
+    static char buf8[255];
+    static char buf9[255];
 
+    if (index_ds_ft == 0) {
+    	memset(buf7, 0, 255);
+	    snprintf(buf7, 255, "PMIX_DS_FETCH_IN=%ld", (long) time_stamps_ds_fetch_in);
+	    putenv(buf7);
+	    memset(buf8, 0, 255);
+	    snprintf(buf8, 255, "PMIX_DS_FETCH_OUT=%ld", (long) time_stamps_ds_fetch_out);
+	    putenv(buf8);	
+ 	    memset(buf9, 0, 255);
+	    snprintf(buf9, 255, "PMIX_DS_FETCH_COUNT=%ld", (long) index_ds_ft);
+	    putenv(buf9);	
+    }
+ 
+    time_stamps_ds_fetch_in[index_ds_ft] = rdtsc();
+ 
     pmix_output_verbose(2, pmix_gds_base_framework.framework_output,
                         "gds: dstore fetch `%s`", key == NULL ? "NULL" : key);
 
@@ -2395,6 +2415,9 @@ PMIX_EXPORT pmix_status_t pmix_common_dstor_fetch(pmix_common_dstore_ctx_t *ds_c
         kv->value = val;
         pmix_list_append(kvs, &kv->super);
     }
+
+    time_stamps_ds_fetch_out[index_ds_ft] = rdtsc();
+    index_ds_ft ++; 
     return rc;
 }
 
