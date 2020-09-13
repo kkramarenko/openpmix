@@ -730,16 +730,16 @@ static pmix_status_t _getfn_fastpath(const pmix_proc_t *proc, const pmix_key_t k
 
     time_stamps_fastpath_in[index_fp] = rdtsc();
 
-    if (index_nb == 0) {
+    if (index_fp == 0) {
     	memset(buf7, 0, 255);
 	    snprintf(buf7, 255, "PMIX_FASTPATH_IN=%ld", (long) time_stamps_fastpath_in);
 	    putenv(buf7);
 	    memset(buf8, 0, 255);
 	    snprintf(buf8, 255, "PMIX_FASTPATH_OUT=%ld", (long) time_stamps_fastpath_out);
 	    putenv(buf8);	
-    	memset(buf6, 0, 255);
-	    snprintf(buf6, 255, "PMIX_FASTPATH_COUNT=%ld", (long) &index_fp);
-	    putenv(buf6);
+    	memset(buf9, 0, 255);
+	    snprintf(buf9, 255, "PMIX_FASTPATH_COUNT=%ld", (long) &index_fp);
+	    putenv(buf9);
     }
  
 
